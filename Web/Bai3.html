@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mô phỏng Router & Định Tuyến - GV: Cô THẢO IT</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f0fdf4; color: #1e293b; display: flex; flex-direction: column; height: 100vh; }
+        
+        .header { background-color: #0f766e; color: white; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .header .teacher-name { font-size: 16px; font-weight: bold; color: #ccfbf1; background: rgba(255, 255, 255, 0.15); padding: 8px 16px; border-radius: 8px; white-space: nowrap; }
+        .header h1 { font-size: 24px; margin: 0; flex: 1; text-align: center; }
+        .header .spacer { width: 160px; } 
+
+        .container { display: flex; flex: 1; overflow: hidden; padding: 15px; gap: 15px; }
+        
+        .control-panel { width: 320px; background: white; border-radius: 10px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow-y: auto; display: flex; flex-direction: column; gap: 15px; border-top: 4px solid #14b8a6; }
+        .control-panel h2 { font-size: 16px; color: #0f766e; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+        
+        .action-btn { padding: 14px; border: none; border-radius: 8px; background: #0ea5e9; color: white; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .action-btn:hover { background: #0284c7; }
+        .action-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
+        .pedagogy-box { background: #f8fafc; border-left: 4px solid #f59e0b; padding: 12px; border-radius: 4px; font-size: 14px; line-height: 1.5; }
+        
+        .simulation-area { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+        .canvas-container { flex: 1; background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative; overflow: hidden; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; }
+        canvas { width: 100%; height: 100%; object-fit: contain; cursor: crosshair; }
+        
+        .log-panel { height: 100px; background: white; border-radius: 10px; padding: 10px 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
+        .log-panel h3 { font-size: 14px; margin-bottom: 5px; color: #334155; }
+        .log-content { flex: 1; overflow-y: auto; font-family: monospace; font-size: 14px; color: #475569; display: flex; flex-direction: column; gap: 5px; }
+        .log-msg.info { color: #0284c7; }
+        .log-msg.success { color: #16a34a; }
+        .log-msg.warning { color: #ea580c; }
+        .log-msg.error { color: #ef4444; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="teacher-name">👩‍💻 GV: Cô THẢO IT</div>
+        <h1>Router và Định tuyến mạng (Routing)</h1>
+        <div class="spacer"></div>
+    </div>
+
+    <div class="container">
+        <div class="control-panel">
+            <h2>1. Chức năng của Router</h2>
+            <div class="pedagogy-box">
+                Khác với Switch chỉ hoạt động trong mạng LAN, <strong>Router</strong> kết nối các mạng LAN với nhau qua Internet và có khả năng <strong>tìm đường đi tối ưu</strong> (định tuyến) cho dữ liệu.
+            </div>
+
+            <h2>2. Thử thách gửi dữ liệu</h2>
+            <button class="action-btn" id="btn-send" onclick="startTransmission()">🚀 Gửi gói tin: Máy A ➔ Máy B</button>
+
+            <h2>3. Khám phá sự thông minh</h2>
+            <div class="pedagogy-box">
+                <em><strong>Mẹo:</strong> Hãy bấm vào biểu tượng chiếc kéo ✂️ trên dây cáp Internet để làm đứt cáp, sau đó gửi lại gói tin để xem Router "bẻ lái" thông minh như thế nào nhé!</em>
+            </div>
+        </div>
+
+        <div class="simulation-area">
+            <div class="canvas-container">
+                <canvas id="routerCanvas" width="1600" height="800"></canvas>
+            </div>
+            
+            <div class="log-panel">
+                <h3>Trạng thái hệ thống:</h3>
+                <div class="log-content" id="log">
+                    <div class="log-msg info">> Sẵn sàng. Nhấn "Gửi gói tin" để bắt đầu...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('routerCanvas');
+        const ctx = canvas.getContext('2d');
+        const logContent = document.getElementById('log');
+        let animationId;
+        
+        const nodes = {
+            'A': { x: 200, y: 420, label: 'Máy A\n(LAN 1)', type: 'pc', color: '#ef4444' },
+            'R_LAN1': { x: 550, y: 420, label: 'Router\nCổng LAN 1', type: 'router' },
+            'C1': { x: 800, y: 150, label: 'Router\nInternet 1', type: 'router' },
+            'C2': { x: 800, y: 650, label: 'Router\nInternet 2', type: 'router' },
+            'C3': { x: 1080, y: 650, label: 'Router\nInternet 3', type: 'router' },
+            'R_LAN2': { x: 1250, y: 420, label: 'Router\nCổng LAN 2', type: 'router' },
+            'B': { x: 1480, y: 420, label: 'Máy B\n(LAN 2)', type: 'pc', color: '#1e293b' }
+        };
+
+        let edges = [
+            { id: 'e1', from: 'A', to: 'R_LAN1', broken: false, cuttable: false },
+            { id: 'e2', from: 'R_LAN1', to: 'C1', broken: false, cuttable: true },
+            { id: 'e3', from: 'R_LAN1', to: 'C2', broken: false, cuttable: true },
+            { id: 'e4', from: 'C1', to: 'R_LAN2', broken: false, cuttable: true },
+            { id: 'e5', from: 'C2', to: 'C3', broken: false, cuttable: true },
+            { id: 'e6', from: 'C3', to: 'R_LAN2', broken: false, cuttable: true },
+            { id: 'e7', from: 'C1', to: 'C3', broken: false, cuttable: true },
+            { id: 'e8', from: 'R_LAN2', to: 'B', broken: false, cuttable: false }
+        ];
+
+        let packet = null;
+
+        function addLog(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `log-msg ${type}`;
+            div.innerText = `> ${message}`;
+            logContent.appendChild(div);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        function drawShapeRound(x, y, w, h, r, color) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+
+        function findShortestPath(start, end) {
+            let graph = {};
+            for (let node in nodes) graph[node] = {};
+            
+            edges.forEach(e => {
+                if (!e.broken) {
+                    const n1 = nodes[e.from], n2 = nodes[e.to];
+                    const dist = Math.hypot(n1.x - n2.x, n1.y - n2.y);
+                    graph[e.from][e.to] = dist;
+                    graph[e.to][e.from] = dist;
+                }
+            });
+
+            let distances = {}, prev = {}, unvisited = new Set(Object.keys(nodes));
+            for (let node in nodes) distances[node] = Infinity;
+            distances[start] = 0;
+
+            while (unvisited.size > 0) {
+                let curr = null;
+                for (let node of unvisited) {
+                    if (curr === null || distances[node] < distances[curr]) curr = node;
+                }
+                if (distances[curr] === Infinity) break;
+                unvisited.delete(curr);
+
+                for (let neighbor in graph[curr]) {
+                    let alt = distances[curr] + graph[curr][neighbor];
+                    if (alt < distances[neighbor]) {
+                        distances[neighbor] = alt;
+                        prev[neighbor] = curr;
+                    }
+                }
+            }
+
+            let path = [];
+            let u = end;
+            if (prev[u] !== undefined || u === start) {
+                while (u !== undefined) {
+                    path.unshift(u);
+                    u = prev[u];
+                }
+            }
+            return path.length > 1 ? path : null;
+        }
+
+        function drawScene() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. VẼ CÁC VÙNG NỀN MẠNG
+            drawShapeRound(50, 180, 500, 500, 40, '#000000');
+            ctx.fillStyle = '#64748b';
+            ctx.font = 'bold 48px sans-serif'; 
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('LAN 1', 80, 240);
+
+            ctx.setLineDash([15, 10]);
+            ctx.strokeStyle = '#9ca3af';
+            ctx.lineWidth = 3;
+            drawShapeRound(630, 60, 540, 700, 50, '#cbd5e1'); 
+            ctx.stroke(); 
+            ctx.setLineDash([]);
+            
+            ctx.fillStyle = '#64748b';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Mạng INTERNET (WAN)', 900, 35); 
+
+            drawShapeRound(1250, 180, 320, 500, 40, '#94a3b8');
+            ctx.fillStyle = '#f8fafc';
+            ctx.textAlign = 'left';
+            ctx.fillText('LAN 2', 1280, 240);
+
+            // 2. VẼ DÂY CÁP
+            edges.forEach(edge => {
+                const n1 = nodes[edge.from];
+                const n2 = nodes[edge.to];
+                
+                ctx.beginPath();
+                ctx.moveTo(n1.x, n1.y);
+                ctx.lineTo(n2.x, n2.y);
+                ctx.lineWidth = 10; 
+                
+                if (edge.broken) {
+                    ctx.strokeStyle = '#9ca3af';
+                    ctx.setLineDash([18, 18]); 
+                } else {
+                    ctx.strokeStyle = '#e2e8f0';
+                    ctx.setLineDash([]);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]); 
+                
+                if (edge.cuttable) {
+                    const mx = (n1.x + n2.x) / 2;
+                    const my = (n1.y + n2.y) / 2;
+                    
+                    ctx.beginPath();
+                    ctx.arc(mx, my, 28, 0, Math.PI * 2); 
+                    ctx.fillStyle = 'white';
+                    ctx.fill();
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = '#cbd5e1';
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = edge.broken ? '#64748b' : '#ef4444';
+                    ctx.font = '30px sans-serif'; 
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(edge.broken ? '🔧' : '✂️', mx, my + 2);
+                }
+            });
+
+            // 3. VẼ CÁC THIẾT BỊ
+            for (let id in nodes) {
+                const node = nodes[id];
+                
+                if (node.type === 'pc') {
+                    drawShapeRound(node.x - 50, node.y - 40, 100, 64, 8, node.color); 
+                    drawShapeRound(node.x - 40, node.y - 30, 80, 44, 4, '#ffffff'); 
+                    ctx.fillStyle = node.color;
+                    ctx.fillRect(node.x - 12, node.y + 24, 24, 15); 
+                    ctx.fillRect(node.x - 30, node.y + 39, 60, 8);  
+                } else if (node.type === 'router') {
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, 48, 0, Math.PI * 2);
+                    ctx.fillStyle = '#1e293b';
+                    ctx.fill();
+                    ctx.lineWidth = 8;
+                    ctx.strokeStyle = '#d97706'; 
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = 'white';
+                    ctx.font = '32px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('☩', node.x, node.y + 2);
+                }
+
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                ctx.font = 'bold 36px sans-serif'; 
+                
+                // MÀU SẮC CHỮ (Đã cập nhật Router Cổng LAN 1 thành màu đỏ)
+                if (id === 'A') {
+                    ctx.fillStyle = '#ffffff';
+                } else if (id === 'R_LAN1') {
+                    ctx.fillStyle = '#ef4444'; // Đổi thành màu đỏ để nổi trên cả nền đen và trắng
+                } else {
+                    ctx.fillStyle = '#1e293b'; 
+                }
+                
+                const lines = node.label.split('\n');
+                lines.forEach((line, index) => {
+                    const offset = node.type === 'router' ? 70 : 60; 
+                    ctx.fillText(line, node.x, node.y + offset + (index * 42)); 
+                });
+            }
+
+            // 4. VẼ GÓI TIN ĐANG CHẠY
+            if (packet) {
+                const n1 = nodes[packet.path[packet.currentIndex]];
+                const n2 = nodes[packet.path[packet.currentIndex + 1]];
+                
+                packet.progress += 0.015;
+                if (packet.progress >= 1) {
+                    packet.progress = 0;
+                    packet.currentIndex++;
+                    
+                    // NẾU ĐẾN ĐÍCH
+                    if (packet.currentIndex >= packet.path.length - 1) {
+                        addLog('Thành công! Gói tin đã đến được Máy B.', 'success');
+                        packet = null;
+                        document.getElementById('btn-send').disabled = false;
+                    } else {
+                        const currentRouter = nodes[packet.path[packet.currentIndex]].label.replace('\n', ' ');
+                        addLog(`Gói tin trung chuyển qua ${currentRouter}...`);
+                    }
+                }
+                
+                // Vẽ gói tin
+                if (packet) {
+                    const px = n1.x + (n2.x - n1.x) * packet.progress;
+                    const py = n1.y + (n2.y - n1.y) * packet.progress;
+                    
+                    ctx.beginPath();
+                    ctx.arc(px, py, 24, 0, Math.PI * 2); 
+                    ctx.fillStyle = '#22c55e'; 
+                    ctx.fill();
+                    
+                    ctx.fillStyle = 'white';
+                    ctx.font = '24px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('✉️', px, py + 2);
+                }
+            }
+
+            animationId = requestAnimationFrame(drawScene);
+        }
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            
+            const renderRatio = canvas.width / canvas.height;
+            const clientRatio = rect.width / rect.height;
+            let renderedWidth = rect.width;
+            let renderedHeight = rect.height;
+            let offsetX = 0;
+            let offsetY = 0;
+            
+            if (clientRatio > renderRatio) {
+                renderedWidth = rect.height * renderRatio;
+                offsetX = (rect.width - renderedWidth) / 2;
+            } else {
+                renderedHeight = rect.width / renderRatio;
+                offsetY = (rect.height - renderedHeight) / 2;
+            }
+            
+            const scaleX = canvas.width / renderedWidth;
+            const scaleY = canvas.height / renderedHeight;
+            const x = (e.clientX - rect.left - offsetX) * scaleX;
+            const y = (e.clientY - rect.top - offsetY) * scaleY;
+
+            edges.forEach(edge => {
+                if (edge.cuttable) {
+                    const n1 = nodes[edge.from], n2 = nodes[edge.to];
+                    const mx = (n1.x + n2.x) / 2, my = (n1.y + n2.y) / 2;
+                    if (Math.hypot(x - mx, y - my) < 50) {
+                        edge.broken = !edge.broken;
+                        const actionStr = edge.broken ? 'CẮT ĐỨT' : 'NỐI LẠI';
+                        addLog(`⚠ Đã ${actionStr} cáp nối giữa ${n1.label.replace('\n',' ')} và ${n2.label.replace('\n',' ')}.`, 'warning');
+                        
+                        if (packet) {
+                            addLog('Mạng thay đổi đột ngột! Gói tin bị đánh rơi. Vui lòng gửi lại.', 'error');
+                            packet = null;
+                            document.getElementById('btn-send').disabled = false;
+                        }
+                    }
+                }
+            });
+        });
+
+        function startTransmission() {
+            document.getElementById('btn-send').disabled = true;
+            addLog('Máy A yêu cầu gửi dữ liệu đến Máy B...', 'info');
+            
+            const path = findShortestPath('A', 'B');
+            
+            if (path) {
+                addLog('Router tìm thấy đường đi: ' + path.join(' ➔ '), 'success');
+                packet = { path: path, currentIndex: 0, progress: 0 };
+            } else {
+                addLog('LỖI! Toàn bộ đường cáp Internet đã đứt. Router không thể định tuyến đến Máy B!', 'error');
+                document.getElementById('btn-send').disabled = false;
+            }
+        }
+
+        drawScene();
+    </script>
+</body>
+</html>

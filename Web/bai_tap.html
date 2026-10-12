@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trắc Nghiệm - Bài 2: Biến và lệnh gán</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0fdf4;
+            background-image: radial-gradient(#bbf7d0 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        pre, code {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .option-btn {
+            transition: all 0.2s ease;
+        }
+        .option-btn:not(:disabled):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .option-btn:disabled {
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div id="app" class="w-full max-w-3xl bg-white rounded-2xl shadow-xl overflow-hidden relative fade-in">
+        <!-- Nội dung sẽ được render bằng JavaScript -->
+    </div>
+
+    <script>
+        const questions = [
+            {
+                question: "Cho các tên biến sau, tên biến nào hợp lệ trong Python?",
+                code: null,
+                options: ["1_hoc_sinh", "hoc sinh", "hoc_sinh_1", "hoc-sinh"],
+                correct: 2,
+                rationale: "Tên biến này hợp lệ vì bắt đầu bằng chữ cái và chỉ chứa chữ cái, chữ số, dấu gạch dưới."
+            },
+            {
+                question: "Kết quả của đoạn chương trình sau là gì?",
+                code: "x = 5\ny = 10\nx, y = y, x\nprint(x, y)",
+                options: ["5 10", "10 5", "Lỗi cú pháp", "10 10"],
+                correct: 1,
+                rationale: "Cú pháp gán đa biến (gán song song) `x, y = y, x` trong Python giúp hoán đổi giá trị của hai biến một cách ngắn gọn."
+            },
+            {
+                question: "Sau khi thực hiện các lệnh sau, biến `a` có giá trị bao nhiêu?",
+                code: "a = 10\nb = 3\na = a // b",
+                options: ["3.3333", "3", "1", "13"],
+                correct: 1,
+                rationale: "Toán tử `//` thực hiện phép chia lấy phần nguyên. 10 chia 3 được 3."
+            },
+            {
+                question: "Lệnh gán nào sau đây là KHÔNG hợp lệ trong Python?",
+                code: null,
+                options: ["x = y = z = 0", "a, b = 1, 2", "x + y = 10", "x = x + 1"],
+                correct: 2,
+                rationale: "Trong lệnh gán, vế trái bắt buộc phải là một hoặc nhiều tên biến độc lập, không thể là một biểu thức tính toán."
+            },
+            {
+                question: "Giả sử có các lệnh sau, biến `S` sẽ có kiểu dữ liệu (data type) gì?",
+                code: "r = 5\npi = 3.14\nS = pi * r ** 2",
+                options: ["int (số nguyên)", "float (số thực)", "str (chuỗi ký tự)", "bool (logic)"],
+                correct: 1,
+                rationale: "Phép nhân giữa số thực (float) và số nguyên (int) luôn cho kết quả là một số thực (float)."
+            },
+            {
+                question: "Giá trị của biến `x` sau lệnh gán `x = 10 + 4 * 2 / 4` là bao nhiêu?",
+                code: null,
+                options: ["7.0", "12.0", "12", "14.0"],
+                correct: 1,
+                rationale: "Theo thứ tự ưu tiên: 4 * 2 = 8, tiếp theo 8 / 4 = 2.0 (phép chia luôn cho kết quả float), cuối cùng 10 + 2.0 = 12.0."
+            },
+            {
+                question: "Đoạn chương trình sau cho kết quả của biến `k` là bao nhiêu?",
+                code: "a = 17\nk = (a // 5) + (a % 5)",
+                options: ["5", "3", "2", "4"],
+                correct: 0,
+                rationale: "17 chia nguyên cho 5 được 3 (17 // 5 = 3). 17 chia lấy dư cho 5 được 2 (17 % 5 = 2). Kết quả k = 3 + 2 = 5."
+            },
+            {
+                question: "Điều gì xảy ra nếu ta chạy đoạn lệnh sau trong Python?",
+                code: "Toan = 8.5\ntoan = 9.0\nprint(Toan)",
+                options: ["In ra 9.0", "In ra 8.5", "Báo lỗi", "In ra 17.5"],
+                correct: 1,
+                rationale: "Biến `Toan` (T viết hoa) vẫn giữ nguyên giá trị là 8.5. Việc gán giá trị cho biến `toan` không làm thay đổi biến `Toan`."
+            },
+            {
+                question: "Cho đoạn lệnh, giá trị của `p` là?",
+                code: "m = 17\nn = 5\np = m % n",
+                options: ["3.4", "3", "2", "17"],
+                correct: 2,
+                rationale: "Toán tử `%` trả về phần dư. 17 chia 5 được 3, phần dư là 2."
+            },
+            {
+                question: "Cho các lệnh gán sau, kiểu dữ liệu của `a`, `b`, `c` lần lượt là:",
+                code: "a = 15\nb = 4.0\nc = a + b",
+                options: ["int, float, float", "int, int, float", "int, float, int", "float, float, float"],
+                correct: 0,
+                rationale: "a là số nguyên (int), b là số thực (float), do đó tổng của chúng tự động được chuyển thành kiểu thực (float)."
+            },
+            {
+                question: "Kết quả của biểu thức `3 ** 2 * 2` là:",
+                code: null,
+                options: ["36", "18", "12", "81"],
+                correct: 1,
+                rationale: "Trong Python, phép lũy thừa `**` có mức ưu tiên cao hơn phép nhân `*`. Do đó tính 3 ** 2 = 9 trước, rồi 9 * 2 = 18."
+            },
+            {
+                question: "Đoạn chương trình sau sẽ in ra màn hình kết quả gì?",
+                code: "a = 2\nb = a ** 3\nprint(b)",
+                options: ["6", "8", "5", "9"],
+                correct: 1,
+                rationale: "Toán tử `**` biểu thị phép tính lũy thừa. 2 mũ 3 bằng 8."
+            },
+            {
+                question: "Cho biết giá trị cuối cùng của biến `x` sau khi thực hiện lần lượt các lệnh sau:",
+                code: "x = 10\nx = x + 5\nx = x * 2",
+                options: ["15", "20", "30", "10"],
+                correct: 2,
+                rationale: "Đầu tiên x = 10. Tiếp theo tính 10 + 5 = 15 rồi gán lại cho x. Cuối cùng, lấy 15 * 2 = 30 rồi gán lại cho x."
+            },
+            {
+                question: "Câu lệnh nào sau đây biểu diễn đúng công thức tính chu vi (C) của hình chữ nhật có chiều dài `a` và chiều rộng `b` trong Python?",
+                code: null,
+                options: ["C = a + b * 2", "C = (a + b) * 2", "C = a * b", "C = (a * b) * 2"],
+                correct: 1,
+                rationale: "Dấu ngoặc tròn `()` giúp nhóm phép cộng để thực hiện trước, sau đó mới nhân kết quả cho 2."
+            },
+            {
+                question: "Cho đoạn lệnh sau, giá trị của `z` thuộc kiểu dữ liệu nào và bằng bao nhiêu?",
+                code: "x = 7\ny = 2\nz = x / y + x // y",
+                options: ["Kiểu int, giá trị 6", "Kiểu float, giá trị 6.5", "Kiểu float, giá trị 6.0", "Báo lỗi"],
+                correct: 1,
+                rationale: "7 / 2 = 3.5 và 7 // 2 = 3. Tổng của chúng là 3.5 + 3 = 6.5 (kiểu float)."
+            },
+            {
+                question: "Biểu thức `10 - 4 * 2 + 8 // 3` sẽ cho kết quả là:",
+                code: null,
+                options: ["4", "14", "18", "2.66"],
+                correct: 0,
+                rationale: "Thực hiện nhân và chia trước: 4 * 2 = 8, và 8 // 3 = 2. Thay vào biểu thức ta có 10 - 8 + 2 = 4."
+            },
+            {
+                question: "Giả sử có dòng lệnh gán `chieu_cao = 1.75`. Khi chạy lệnh `type(chieu_cao)`, kết quả thu được phản ánh kiểu dữ liệu gì?",
+                code: null,
+                options: ["<class 'int'>", "<class 'str'>", "<class 'float'>", "<class 'bool'>"],
+                correct: 2,
+                rationale: "Giá trị 1.75 là một số có phần thập phân (số thực), do đó thuộc kiểu dữ liệu float."
+            },
+            {
+                question: "Khi gán song song nhiều biến cùng một lúc, nếu vế trái có nhiều biến hơn vế phải thì điều gì sẽ xảy ra?\nVí dụ: `x, y, z = 1, 2`",
+                code: null,
+                options: [
+                    "Biến z sẽ tự động nhận giá trị mặc định là 0",
+                    "Biến z sẽ nhận giá trị rỗng (None)",
+                    "Chương trình sẽ báo lỗi ValueError",
+                    "Biến z sẽ lặp lại nhận giá trị cuối cùng (là 2)"
+                ],
+                correct: 2,
+                rationale: "Python kiểm soát rất chặt chẽ, số lượng các biến ở vế trái phải bằng đúng số lượng các giá trị được cấp ở vế phải."
+            },
+            {
+                question: "Cho x = 15. Sau khi thực hiện lệnh `x //= 2`, biến x mang giá trị nào?",
+                code: null,
+                options: ["7.5", "7", "1", "15"],
+                correct: 1,
+                rationale: "Lệnh `x //= 2` tương đương với `x = x // 2`. Lấy 15 chia nguyên cho 2 được 7."
+            },
+            {
+                question: "Hãy dự đoán kết quả của đoạn chương trình sau:",
+                code: "a = 5\nb = 3\nc = a * b - b ** 2 + a % 2\nprint(c)",
+                options: ["11", "9", "7", "6"],
+                correct: 2,
+                rationale: "Tính lũy thừa trước: b**2 = 9. Tiếp theo nhân/chia dư: a*b = 15, a%2 = 1. Cuối cùng tính cộng/trừ: 15 - 9 + 1 = 7."
+            }
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let hasAnswered = false;
+
+        const appDiv = document.getElementById('app');
+
+        function renderStartScreen() {
+            appDiv.innerHTML = `
+                <div class="p-10 text-center fade-in">
+                    <div class="mb-6 inline-flex items-center justify-center w-24 h-24 bg-green-100 text-green-600 rounded-full">
+                        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                    </div>
+                    <h1 class="text-3xl font-bold text-gray-800 mb-4">Trắc Nghiệm Python Cơ Bản</h1>
+                    <h2 class="text-xl text-green-600 font-semibold mb-6">Bài 2: Biến và lệnh gán</h2>
+                    <p class="text-gray-500 mb-8 max-w-md mx-auto">Kiểm tra khả năng phân tích biểu thức, thứ tự ưu tiên, và các kiểu dữ liệu số cơ bản trong Python qua 20 câu hỏi.</p>
+                    <button onclick="startGame()" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-full shadow-lg transition-transform transform hover:scale-105">
+                        Bắt Đầu Ngay
+                    </button>
+                </div>
+            `;
+        }
+
+        function startGame() {
+            currentQuestionIndex = 0;
+            score = 0;
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            hasAnswered = false;
+            const q = questions[currentQuestionIndex];
+            const progressPercentage = ((currentQuestionIndex) / questions.length) * 100;
+
+            let codeHtml = '';
+            if (q.code) {
+                codeHtml = `<div class="bg-gray-800 text-green-400 p-4 rounded-lg text-left overflow-x-auto mb-6 text-sm font-mono whitespace-pre shadow-inner border border-gray-700">${q.code}</div>`;
+            }
+
+            let optionsHtml = '';
+            q.options.forEach((opt, index) => {
+                optionsHtml += `
+                    <button id="opt-${index}" onclick="selectAnswer(${index})" class="option-btn w-full text-left p-4 rounded-xl border-2 border-gray-200 bg-white hover:border-green-400 hover:bg-green-50 focus:outline-none mb-3 text-gray-700 font-medium">
+                        <span class="inline-block w-8 h-8 text-center leading-8 rounded-full bg-gray-100 mr-3 text-gray-500 font-bold shadow-sm">${String.fromCharCode(65 + index)}</span> 
+                        ${opt}
+                    </button>
+                `;
+            });
+
+            appDiv.innerHTML = `
+                <div class="fade-in">
+                    <!-- Header / Progress -->
+                    <div class="bg-green-50 p-4 border-b border-green-100 flex justify-between items-center">
+                        <span class="text-green-700 font-bold">Câu ${currentQuestionIndex + 1} / ${questions.length}</span>
+                        <span class="text-gray-500 font-semibold bg-white px-3 py-1 rounded-full shadow-sm">Điểm: <span class="text-green-600">${score}</span></span>
+                    </div>
+                    <div class="w-full bg-gray-200 h-1.5">
+                        <div class="bg-green-500 h-1.5 transition-all duration-500 ease-in-out" style="width: ${progressPercentage}%"></div>
+                    </div>
+
+                    <!-- Question Body -->
+                    <div class="p-6 md:p-8">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4 leading-relaxed whitespace-pre-line">${q.question}</h2>
+                        ${codeHtml}
+                        <div class="mt-4">
+                            ${optionsHtml}
+                        </div>
+                        
+                        <!-- Feedback Area -->
+                        <div id="feedback-area" class="hidden mt-6 p-4 rounded-lg border"></div>
+
+                        <!-- Next Button -->
+                        <div class="mt-6 text-right hidden" id="next-btn-container">
+                            <button onclick="nextQuestion()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow transition transform hover:scale-105">
+                                ${currentQuestionIndex === questions.length - 1 ? 'Xem Kết Quả' : 'Câu Tiếp Theo &rarr;'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function selectAnswer(selectedIndex) {
+            if (hasAnswered) return;
+            hasAnswered = true;
+
+            const q = questions[currentQuestionIndex];
+            const isCorrect = (selectedIndex === q.correct);
+            
+            if (isCorrect) score++;
+
+            // Update UI for options
+            for (let i = 0; i < q.options.length; i++) {
+                const btn = document.getElementById(`opt-${i}`);
+                btn.disabled = true; // Disable all buttons
+                
+                if (i === q.correct) {
+                    btn.classList.remove('border-gray-200', 'bg-white', 'hover:border-green-400', 'hover:bg-green-50');
+                    btn.classList.add('border-green-500', 'bg-green-100');
+                    btn.innerHTML += `<span class="float-right text-green-600"><svg class="w-6 h-6 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></span>`;
+                } else if (i === selectedIndex && !isCorrect) {
+                    btn.classList.remove('border-gray-200', 'bg-white', 'hover:border-green-400', 'hover:bg-green-50');
+                    btn.classList.add('border-red-500', 'bg-red-50');
+                    btn.innerHTML += `<span class="float-right text-red-500"><svg class="w-6 h-6 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></span>`;
+                }
+            }
+
+            // Show Feedback
+            const feedbackArea = document.getElementById('feedback-area');
+            feedbackArea.classList.remove('hidden');
+            if (isCorrect) {
+                feedbackArea.classList.add('bg-green-50', 'border-green-200', 'text-green-800');
+                feedbackArea.innerHTML = `<p class="font-bold mb-1 flex items-center"><svg class="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg> Chính xác!</p><p class="text-sm mt-1">${q.rationale}</p>`;
+            } else {
+                feedbackArea.classList.add('bg-red-50', 'border-red-200', 'text-red-800');
+                feedbackArea.innerHTML = `<p class="font-bold mb-1 flex items-center"><svg class="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg> Chưa chính xác!</p><p class="text-sm mt-1">${q.rationale}</p>`;
+            }
+
+            // Show Next Button
+            document.getElementById('next-btn-container').classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < questions.length) {
+                renderQuestion();
+            } else {
+                renderEndScreen();
+            }
+        }
+
+        function renderEndScreen() {
+            const percentage = Math.round((score / questions.length) * 100);
+            let message = "";
+            let color = "";
+            let emoji = "";
+
+            if (percentage >= 80) {
+                message = "Xuất sắc! Bạn phân tích code rất tốt.";
+                color = "text-green-600";
+                emoji = "🏆";
+            } else if (percentage >= 50) {
+                message = "Khá tốt! Bạn hãy ôn lại phần thứ tự ưu tiên nhé.";
+                color = "text-yellow-600";
+                emoji = "👏";
+            } else {
+                message = "Bạn cần xem lại kiến thức về biến và biểu thức kỹ hơn!";
+                color = "text-red-500";
+                emoji = "📚";
+            }
+
+            appDiv.innerHTML = `
+                <div class="p-10 text-center fade-in">
+                    <div class="text-6xl mb-4">${emoji}</div>
+                    <h1 class="text-3xl font-bold text-gray-800 mb-2">Hoàn Thành Bài Tập!</h1>
+                    <p class="text-gray-600 mb-6">Bạn đã hoàn thành 20 câu hỏi trắc nghiệm của Bài 2.</p>
+                    
+                    <div class="bg-gray-50 rounded-xl p-6 mb-8 inline-block shadow-inner border border-gray-100 w-full max-w-sm">
+                        <div class="text-gray-500 font-semibold mb-2 uppercase tracking-wide text-sm">Điểm số của bạn</div>
+                        <div class="text-6xl font-black ${color} mb-3">${score} <span class="text-3xl text-gray-400 font-normal">/ ${questions.length}</span></div>
+                        <div class="mt-2 font-medium ${color} bg-white px-4 py-2 rounded-lg shadow-sm border inline-block">${message}</div>
+                    </div>
+                    
+                    <div>
+                        <button onclick="startGame()" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-full shadow transition-transform transform hover:scale-105">
+                            <svg class="w-5 h-5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            Làm Lại Bài
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Initialize when page loads
+        window.onload = renderStartScreen;
+    </script>
+</body>
+</html>

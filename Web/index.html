@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Trò Chơi Ôn Tập Tin Học</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .menu-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 800px;
+        }
+        .lesson-card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            color: inherit;
+        }
+        .lesson-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.15);
+        }
+        .lesson-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+        .lesson-desc {
+            font-size: 0.95rem;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎮 Danh Mục Trò Chơi Ôn Tập</h1>
+
+    <div class="menu-container">
+        <!-- ĐẢM BẢO THUỘC TÍNH HREF TRÙNG TÊN VỚI FILE HTML TRÒ CHƠI BẠN ĐÃ LƯU -->
+        
+        <a href="Bai3.html" class="lesson-card">
+            <div class="lesson-title">Bài 3: Các thiết bị mạng thông dụng</div>
+            <div class="lesson-desc">Ôn tập các thiết bị cơ bản trong mạng máy máy</div>
+        </a>
+
+        <a href="Bai4.html" class="lesson-card">
+            <div class="lesson-title">Bài 4: Giao thức mạng</div>
+            <div class="lesson-desc">Trò chơi trắc nghiệm về các giao thức mạng</div>
+        </a>
+
+        <a href="bai_tap.html" class="lesson-card">
+            <div class="lesson-title">Bài 5: Thực hành chia sẻ tài nguyên trên mạng</div>
+            <div class="lesson-desc">Trò chơi trắc nghiệm</div>
+        </a>
+    </div>
+
+</body>
+</html>

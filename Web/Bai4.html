@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mô phỏng Giao thức TCP/IP - Tin học 12</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        
+        #sim-canvas {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(to right, #e0f2fe, #f3e8ff, #dcfce7);
+        }
+        
+        /* Hiệu ứng Router */
+        .router-node {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background-color: #6366f1;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+
+        /* Hiệu ứng Gói tin (Packet) */
+        .packet {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-color: #3b82f6;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transform: translate(-50%, -50%);
+            transition: all 0.1s linear;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 20;
+        }
+        .packet.lost { background-color: #ef4444; animation: fadeOut 1s forwards; }
+        .packet.ack { background-color: #f59e0b; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; z-index: 15;}
+        
+        @keyframes fadeOut {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(2); display: none; }
+        }
+
+        /* Custom Scrollbar cho Log */
+        #log-area::-webkit-scrollbar { width: 6px; }
+        #log-area::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="h-screen flex flex-col p-2 md:p-4 text-gray-800">
+
+    <header class="bg-white rounded-xl shadow-sm p-4 mb-4 flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-indigo-700">Mô phỏng Giao thức TCP/IP</h1>
+            <p class="text-sm text-gray-500">Tin học 12 - Bài 4: Giao thức mạng</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 shadow-sm hidden sm:block">
+                👩‍🏫 GV: Cô THẢO IT
+            </div>
+            <button id="btn-help" class="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg font-semibold hover:bg-indigo-200 transition">
+                Hướng dẫn
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4 h-full overflow-hidden">
+        
+        <!-- Cột trái: Điều khiển & Tiến trình học tập -->
+        <aside class="md:col-span-3 flex flex-col gap-4 overflow-y-auto">
+            
+            <!-- Khu vực điều khiển -->
+            <div class="bg-white p-4 rounded-xl shadow-sm">
+                <h2 class="font-bold text-lg mb-3 border-b pb-2">Bảng điều khiển</h2>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">Dữ liệu cần truyền:</label>
+                    <input type="text" id="input-data" value="INTERNET" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-center uppercase" maxlength="12">
+                    <p class="text-xs text-gray-500 mt-1">Mỗi kí tự sẽ là 1 gói tin.</p>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1 flex justify-between">
+                        <span>Tỉ lệ nhiễu mạng (Mất gói):</span>
+                        <span id="loss-val" class="text-red-500 font-bold">20%</span>
+                    </label>
+                    <input type="range" id="loss-rate" min="0" max="60" value="20" class="w-full accent-red-500">
+                </div>
+                
+                <button id="btn-start" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition shadow-lg">
+                    🚀 BẮT ĐẦU TRUYỀN
+                </button>
+            </div>
+
+            <!-- Khu vực Tương tác sư phạm -->
+            <div class="bg-indigo-50 p-4 rounded-xl shadow-sm border border-indigo-100 flex-1 flex flex-col">
+                <h2 class="font-bold text-indigo-800 mb-2">💡 Khám phá quy luật</h2>
+                
+                <div id="q-pre" class="text-sm bg-white p-3 rounded shadow-sm border border-gray-200 mb-2">
+                    <strong>Câu hỏi mở:</strong> Nếu gửi một tệp dữ liệu rất lớn qua mạng, điều gì sẽ xảy ra nếu bị đứt cáp hoặc nhiễu giữa chừng? Hãy quan sát mô phỏng.
+                </div>
+                
+                <div id="q-during" class="text-sm bg-white p-3 rounded shadow-sm border border-gray-200 mb-2 hidden">
+                    <strong>Quan sát:</strong> Các gói tin có đi cùng một đường không? Gói tin đến đích có đúng thứ tự ban đầu không? Nếu gói tin chuyển màu đỏ (bị mất) thì hệ thống làm gì?
+                </div>
+
+                <div id="q-post" class="text-sm flex flex-col gap-2 hidden mt-auto">
+                    <button id="btn-hypothesis" class="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition">
+                        ✅ Kiểm tra giả thuyết
+                    </button>
+                    <button id="btn-reset" class="w-full bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300 transition">
+                        🔄 Khám phá lại
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <section class="md:col-span-6 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col relative h-[50vh] md:h-auto">
+            
+            <div class="p-3 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
+                <div class="font-bold text-blue-700 flex flex-col items-center">
+                    <span>MÁY GỬI</span>
+                    <span class="text-xs text-gray-500">Chia nhỏ & Đánh số</span>
+                </div>
+                <div class="font-bold text-purple-600">INTERNET (Định tuyến IP)</div>
+                <div class="font-bold text-green-700 flex flex-col items-center">
+                    <span>MÁY NHẬN</span>
+                    <span class="text-xs text-gray-500">Kiểm tra & Ráp lại</span>
+                </div>
+            </div>
+
+            <!-- Canvas Area -->
+            <div id="sim-canvas" class="flex-1 w-full relative">
+                <!-- Máy tính gửi -->
+                <div class="absolute left-4 top-1/2 -translate-y-1/2 w-16 h-16 bg-blue-100 border-2 border-blue-400 rounded-lg flex items-center justify-center text-3xl z-30">
+                    💻
+                </div>
+                <!-- Máy tính nhận -->
+                <div class="absolute right-4 top-1/2 -translate-y-1/2 w-16 h-16 bg-green-100 border-2 border-green-400 rounded-lg flex items-center justify-center text-3xl z-30">
+                    🖥️
+                </div>
+                
+                <!-- Buffer gửi (Hiển thị dữ liệu gốc) -->
+                <div id="sender-buffer" class="absolute left-2 top-4 text-xs font-mono font-bold flex gap-1"></div>
+                
+                <!-- Buffer nhận (Hiển thị dữ liệu đang ráp) -->
+                <div id="receiver-buffer" class="absolute right-2 top-4 text-xs font-mono font-bold flex gap-1 flex-row-reverse"></div>
+
+                <!-- Vị trí các Router (Được tạo qua JS) -->
+                <div id="routers-container"></div>
+                <!-- Vị trí các Gói tin -->
+                <div id="packets-container"></div>
+            </div>
+        </section>
+
+        <aside class="md:col-span-3 flex flex-col gap-4 overflow-y-auto">
+            <div class="bg-black text-green-400 p-4 rounded-xl shadow-sm flex-1 flex flex-col font-mono text-sm border border-gray-800">
+                <h2 class="font-bold text-white mb-2 border-b border-gray-700 pb-2">Terminal / Console</h2>
+                <div id="log-area" class="flex-1 overflow-y-auto space-y-1">
+                    <div class="text-gray-500">> Hệ thống TCP/IP sẵn sàng.</div>
+                    <div class="text-gray-500">> Chờ lệnh truyền dữ liệu...</div>
+                </div>
+            </div>
+            
+            <!-- Trạng thái tóm tắt -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <h3 class="font-bold mb-2">Thống kê phiên truyền</h3>
+                <div class="flex justify-between text-sm mb-1">
+                    <span>Tổng gói tin:</span> <span id="stat-total" class="font-bold">0</span>
+                </div>
+                <div class="flex justify-between text-sm mb-1 text-green-600">
+                    <span>Đã nhận:</span> <span id="stat-received" class="font-bold">0</span>
+                </div>
+                <div class="flex justify-between text-sm text-red-500">
+                    <span>Gửi lại do lỗi:</span> <span id="stat-retransmitted" class="font-bold">0</span>
+                </div>
+                
+                <!-- Progress bar -->
+                <div class="w-full bg-gray-200 rounded-full h-2.5 mt-3">
+                    <div id="progress-bar" class="bg-green-600 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Modal Hướng Dẫn -->
+    <div id="modal-help" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl">
+            <h2 class="text-xl font-bold mb-4 text-indigo-700">Hướng dẫn sử dụng</h2>
+            <ul class="list-disc pl-5 space-y-2 text-sm">
+                <li>Nhập một từ ngắn (VD: TINHOC) vào ô <strong>Dữ liệu cần truyền</strong>. Mỗi chữ cái sẽ được cắt thành 1 gói tin.</li>
+                <li>Kéo thanh trượt <strong>Tỉ lệ nhiễu mạng</strong> để tăng/giảm xác suất gói tin bị mất trên đường truyền.</li>
+                <li>Bấm <strong>Bắt đầu truyền</strong> và quan sát đường đi của các khối vuông (gói tin).</li>
+                <li>Chú ý xem điều gì xảy ra khi gói tin màu Xanh dương bị đổi thành Đỏ (Thất lạc). Máy nhận xử lí thế nào?</li>
+            </ul>
+            <button id="close-help" class="mt-6 w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700">Đã hiểu</button>
+        </div>
+    </div>
+
+    <!-- Modal Bài Tập/Giả thuyết -->
+    <div id="modal-hypothesis" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl max-w-2xl w-full shadow-2xl">
+            <h2 class="text-2xl font-bold mb-4 text-indigo-700">Kiểm tra & Kết luận</h2>
+            
+            <div class="space-y-4 mb-6">
+                <p class="font-medium">Từ quá trình quan sát mô phỏng, em hãy chọn khẳng định ĐÚNG NHẤT về vai trò của Giao thức TCP/IP:</p>
+                
+                <label class="block p-3 border rounded-lg cursor-pointer hover:bg-blue-50">
+                    <input type="radio" name="quiz" value="wrong1" class="mr-2">
+                    A. Giao thức IP đảm bảo dữ liệu đi theo 1 đường thẳng duy nhất để tránh bị lạc.
+                </label>
+                <label class="block p-3 border rounded-lg cursor-pointer hover:bg-blue-50">
+                    <input type="radio" name="quiz" value="wrong2" class="mr-2">
+                    B. Nếu một gói tin bị mất, TCP sẽ huỷ bỏ toàn bộ và yêu cầu gửi lại từ đầu.
+                </label>
+                <label class="block p-3 border rounded-lg cursor-pointer hover:bg-green-50 bg-green-50 border-green-300 shadow-sm" id="correct-ans">
+                    <input type="radio" name="quiz" value="correct" class="mr-2">
+                    C. Giao thức IP tìm đường (định tuyến) cho từng gói tin độc lập. Giao thức TCP đánh số thứ tự, kiểm tra và yêu cầu gửi lại gói bị mất, sau đó ráp nối lại chính xác tại đích.
+                </label>
+            </div>
+
+            <div id="conclusion-text" class="hidden bg-blue-100 text-blue-800 p-4 rounded-lg mb-4 text-sm border border-blue-200">
+                <strong>Chính xác! Củng cố kiến thức (Theo SGK):</strong><br>
+                - <strong>Giao thức IP:</strong> Quy định địa chỉ và dẫn đường (định tuyến) các gói tin qua các bộ định tuyến (Router).<br>
+                - <strong>Giao thức TCP:</strong> Chia nhỏ dữ liệu, đánh số thứ tự (để khi đến đích ráp lại đúng), tạo cơ chế xác nhận để biết gói nào thất lạc và yêu cầu gửi lại (Retransmission).
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button id="check-ans" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Kiểm tra đáp án</button>
+                <button id="close-hypothesis" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 hidden">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const canvas = document.getElementById('sim-canvas');
+        const routersContainer = document.getElementById('routers-container');
+        const packetsContainer = document.getElementById('packets-container');
+        const logArea = document.getElementById('log-area');
+        const senderBuffer = document.getElementById('sender-buffer');
+        const receiverBuffer = document.getElementById('receiver-buffer');
+        
+        const btnStart = document.getElementById('btn-start');
+        const btnHelp = document.getElementById('btn-help');
+        const inputData = document.getElementById('input-data');
+        const lossRateInput = document.getElementById('loss-rate');
+        const lossValTxt = document.getElementById('loss-val');
+        
+        // Cập nhật giá trị thanh trượt
+        lossRateInput.addEventListener('input', (e) => {
+            lossValTxt.textContent = e.target.value + '%';
+        });
+
+        // System state
+        let isSimulating = false;
+        let animationFrameId;
+        let originalData = "";
+        let packetsInfo = []; // Lưu trữ thông tin logic của gói tin
+        let activeSprites = []; // Quản lí UI các gói đang bay
+        
+        let statTotal = 0;
+        let statReceived = 0;
+        let statRetransmitted = 0;
+        let receivedArray = []; // Mảng chứa dữ liệu đích
+
+        // Cấu hình Router (Tạo tọa độ tương đối theo %)
+        const routers = [
+            { id: 1, x: 25, y: 20 },
+            { id: 2, x: 25, y: 80 },
+            { id: 3, x: 50, y: 50 },
+            { id: 4, x: 75, y: 20 },
+            { id: 5, x: 75, y: 80 }
+        ];
+        
+        // Bản đồ định tuyến (Routing table mô phỏng - Ai nối với ai)
+        const routingEdges = [
+            { from: 'sender', to: 1 }, { from: 'sender', to: 2 },
+            { from: 1, to: 3 }, { from: 1, to: 4 },
+            { from: 2, to: 3 }, { from: 2, to: 5 },
+            { from: 3, to: 4 }, { from: 3, to: 5 },
+            { from: 4, to: 'receiver' }, { from: 5, to: 'receiver' }
+        ];
+
+        function initRouters() {
+            routersContainer.innerHTML = '';
+            routers.forEach(r => {
+                const el = document.createElement('div');
+                el.className = 'router-node';
+                el.style.left = r.x + '%';
+                el.style.top = r.y + '%';
+                el.textContent = 'R' + r.id;
+                routersContainer.appendChild(el);
+            });
+        }
+
+        function log(msg, type = 'info') {
+            const div = document.createElement('div');
+            div.textContent = `> ${msg}`;
+            if(type === 'error') div.className = 'text-red-400';
+            if(type === 'success') div.className = 'text-green-400';
+            if(type === 'warning') div.className = 'text-yellow-400';
+            logArea.appendChild(div);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function updateStats() {
+            document.getElementById('stat-total').textContent = statTotal;
+            document.getElementById('stat-received').textContent = statReceived;
+            document.getElementById('stat-retransmitted').textContent = statRetransmitted;
+            const pct = statTotal > 0 ? Math.floor((statReceived / statTotal) * 100) : 0;
+            document.getElementById('progress-bar').style.width = pct + '%';
+        }
+
+        function renderBuffers() {
+            // Buffer gửi
+            senderBuffer.innerHTML = '';
+            for(let i=0; i<originalData.length; i++) {
+                const b = document.createElement('div');
+                b.className = 'w-5 h-5 bg-blue-200 text-blue-800 flex items-center justify-center border border-blue-400';
+                b.textContent = originalData[i];
+                senderBuffer.appendChild(b);
+            }
+
+            // Buffer nhận (đúng thứ tự)
+            receiverBuffer.innerHTML = '';
+            for(let i=originalData.length-1; i>=0; i--) {
+                const b = document.createElement('div');
+                b.className = `w-5 h-5 flex items-center justify-center border ${receivedArray[i] ? 'bg-green-200 text-green-800 border-green-400' : 'bg-gray-100 border-gray-300 border-dashed text-transparent'}`;
+                b.textContent = receivedArray[i] || '?';
+                receiverBuffer.appendChild(b);
+            }
+        }
+
+        // Tìm đường ngẫu nhiên từ sender -> receiver qua các router
+        function generatePath() {
+            const path = [{ x: 5, y: 50 }]; // Sender coords
+            let current = 'sender';
+            
+            while (current !== 'receiver') {
+                const possibleEdges = routingEdges.filter(e => e.from === current);
+                if(possibleEdges.length === 0) break;
+                const edge = possibleEdges[Math.floor(Math.random() * possibleEdges.length)];
+                
+                if (edge.to === 'receiver') {
+                    path.push({ x: 95, y: 50 }); // Receiver coords
+                } else {
+                    const r = routers.find(r => r.id === edge.to);
+                    path.push({ x: r.x, y: r.y });
+                }
+                current = edge.to;
+            }
+            return path;
+        }
+
+        class PacketSprite {
+            constructor(seq, char, isAck = false, targetSeq = -1) {
+                this.seq = seq;
+                this.char = char;
+                this.isAck = isAck; // Tín hiệu TCP yêu cầu gửi lại
+                this.targetSeq = targetSeq; // Dùng cho Ack
+                
+                this.path = generatePath();
+                if (this.isAck) this.path.reverse(); // Ack đi ngược từ receiver -> sender
+                
+                this.currentPathIdx = 0;
+                this.x = this.path[0].x;
+                this.y = this.path[0].y;
+                
+                // Speed variations for out-of-order delivery
+                this.speed = (Math.random() * 0.15 + 0.15) * (this.isAck ? 1.5 : 1); // Đơn vị: % per frame
+                this.status = 'moving'; // moving, lost, arrived
+                
+                // Quyết định số phận gói tin (Mất hay không?) - Phụ thuộc thanh trượt nhiễu
+                const lossRate = parseInt(lossRateInput.value);
+                this.willLose = !this.isAck && (Math.random() * 100 < lossRate);
+                if (this.willLose) {
+                    // Quyết định nó mất ở đoạn nào trên đường đi
+                    this.loseAtIdx = Math.floor(Math.random() * (this.path.length - 1)) + 1;
+                }
+
+                this.el = document.createElement('div');
+                this.el.className = 'packet ' + (this.isAck ? 'ack' : '');
+                this.el.textContent = this.isAck ? 'ACK' : this.seq; // Hiển thị số thứ tự
+                packetsContainer.appendChild(this.el);
+                this.updateUI();
+            }
+
+            update() {
+                if (this.status !== 'moving') return;
+
+                const target = this.path[this.currentPathIdx + 1];
+                if (!target) {
+                    this.arrive();
+                    return;
+                }
+
+                // Tính vector di chuyển
+                const dx = target.x - this.x;
+                const dy = target.y - this.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+
+                if (dist < this.speed) {
+                    // Tới node hiện tại, chuyển sang node tiếp theo
+                    this.x = target.x;
+                    this.y = target.y;
+                    this.currentPathIdx++;
+                    
+                    // Kiểm tra xem có bị nhiễu (mất) tại node này không
+                    if (this.willLose && this.currentPathIdx === this.loseAtIdx) {
+                        this.lose();
+                    }
+                } else {
+                    // Đang bay
+                    this.x += (dx / dist) * this.speed;
+                    this.y += (dy / dist) * this.speed;
+                }
+                
+                this.updateUI();
+            }
+
+            updateUI() {
+                this.el.style.left = this.x + '%';
+                this.el.style.top = this.y + '%';
+            }
+
+            lose() {
+                this.status = 'lost';
+                this.el.classList.add('lost');
+                log(`[Lỗi mạng] Gói số ${this.seq} ('${this.char}') bị rớt!`, 'error');
+                
+                // Sau khi mất 1 thời gian (Timeout), Receiver/Sender sẽ gửi Ack yêu cầu truyền lại
+                setTimeout(() => {
+                    if(!isSimulating) return;
+                    log(`[TCP Timeout] Yêu cầu gửi lại gói ${this.seq}`, 'warning');
+                    activeSprites.push(new PacketSprite(0, '', true, this.seq));
+                }, 1500);
+            }
+
+            arrive() {
+                this.status = 'arrived';
+                this.el.remove();
+                
+                if (this.isAck) {
+                    // Báo hiệu sender gửi lại gói bị mất
+                    statRetransmitted++;
+                    updateStats();
+                    log(`[TCP Retransmit] Máy gửi truyền lại gói ${this.targetSeq}`);
+                    // Tạo lại gói tin gốc
+                    const rePacket = packetsInfo.find(p => p.seq === this.targetSeq);
+                    if(rePacket) {
+                        activeSprites.push(new PacketSprite(rePacket.seq, rePacket.char));
+                    }
+                } else {
+                    // Gói tin data tới đích
+                    if (!receivedArray[this.seq - 1]) {
+                        receivedArray[this.seq - 1] = this.char;
+                        statReceived++;
+                        updateStats();
+                        log(`[Đã nhận] Gói ${this.seq} ('${this.char}'). Đang ráp nối...`, 'success');
+                        renderBuffers();
+                        
+                        checkCompletion();
+                    }
+                }
+            }
+        }
+
+        function gameLoop() {
+            if (!isSimulating) return;
+            
+            // Xóa sprite đã xong
+            activeSprites = activeSprites.filter(s => s.status === 'moving');
+            
+            // Update & Draw
+            activeSprites.forEach(s => s.update());
+            
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function checkCompletion() {
+            if (statReceived === statTotal && statTotal > 0) {
+                isSimulating = false;
+                log(`[TCP/IP] HOÀN TẤT! Dữ liệu đã được ráp lại chính xác.`, 'success');
+                document.getElementById('q-post').classList.remove('hidden');
+                document.getElementById('q-during').classList.add('hidden');
+            }
+        }
+
+        function startSimulation() {
+            const data = inputData.value.trim().toUpperCase();
+            if(!data) {
+                alert("Vui lòng nhập dữ liệu!");
+                return;
+            }
+            
+            // Reset
+            cancelAnimationFrame(animationFrameId);
+            packetsContainer.innerHTML = '';
+            activeSprites = [];
+            packetsInfo = [];
+            originalData = data;
+            receivedArray = new Array(originalData.length).fill(null);
+            
+            statTotal = originalData.length;
+            statReceived = 0;
+            statRetransmitted = 0;
+            updateStats();
+            renderBuffers();
+            
+            logArea.innerHTML = '';
+            log(`Bắt đầu truyền thông điệp: "${originalData}"`);
+            log(`TCP chia dữ liệu thành ${statTotal} gói tin.`);
+
+            document.getElementById('q-pre').classList.add('hidden');
+            document.getElementById('q-during').classList.remove('hidden');
+            document.getElementById('q-post').classList.add('hidden');
+            document.getElementById('conclusion-text').classList.add('hidden');
+
+            isSimulating = true;
+            
+            // Tạo các gói tin và đẩy dần vào mạng
+            for(let i=0; i<originalData.length; i++) {
+                const pInfo = { seq: i+1, char: originalData[i] };
+                packetsInfo.push(pInfo);
+                
+                // Delay việc gửi để mô phỏng
+                setTimeout(() => {
+                    if(!isSimulating) return;
+                    log(`[Gửi đi] Gói số ${pInfo.seq} chứa '${pInfo.char}'`);
+                    activeSprites.push(new PacketSprite(pInfo.seq, pInfo.char));
+                }, i * 600); // Gửi cách nhau 0.6s
+            }
+            
+            gameLoop();
+        }
+
+        btnStart.addEventListener('click', startSimulation);
+        
+        // Modal Help
+        btnHelp.addEventListener('click', () => document.getElementById('modal-help').classList.remove('hidden'));
+        document.getElementById('close-help').addEventListener('click', () => document.getElementById('modal-help').classList.add('hidden'));
+
+        // Modal Hypothesis
+        document.getElementById('btn-hypothesis').addEventListener('click', () => {
+            document.getElementById('modal-hypothesis').classList.remove('hidden');
+            // Reset radio buttons
+            document.querySelectorAll('input[name="quiz"]').forEach(r => r.checked = false);
+            document.getElementById('conclusion-text').classList.add('hidden');
+            document.getElementById('check-ans').classList.remove('hidden');
+            document.getElementById('close-hypothesis').classList.add('hidden');
+        });
+
+        document.getElementById('check-ans').addEventListener('click', () => {
+            const selected = document.querySelector('input[name="quiz"]:checked');
+            if(!selected) {
+                alert("Vui lòng chọn một đáp án!");
+                return;
+            }
+            if(selected.value === 'correct') {
+                document.getElementById('conclusion-text').classList.remove('hidden');
+                document.getElementById('check-ans').classList.add('hidden');
+                document.getElementById('close-hypothesis').classList.remove('hidden');
+            } else {
+                alert("Chưa chính xác! Em hãy đọc lại sự khác biệt giữa IP và TCP.");
+            }
+        });
+
+        document.getElementById('close-hypothesis').addEventListener('click', () => document.getElementById('modal-hypothesis').classList.add('hidden'));
+
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            inputData.value = "INTERNET";
+            lossRateInput.value = 20;
+            lossValTxt.textContent = "20%";
+            document.getElementById('q-pre').classList.remove('hidden');
+            document.getElementById('q-during').classList.add('hidden');
+            document.getElementById('q-post').classList.add('hidden');
+            packetsContainer.innerHTML = '';
+            senderBuffer.innerHTML = '';
+            receiverBuffer.innerHTML = '';
+            logArea.innerHTML = '<div class="text-gray-500">> Hệ thống TCP/IP sẵn sàng.</div>';
+            isSimulating = false;
+        });
+
+        // Khởi tạo giao diện ban đầu
+        initRouters();
+    </script>
+</body>
+</html>
